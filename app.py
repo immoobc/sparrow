@@ -221,7 +221,7 @@ with st.sidebar.expander("📖 术语速查"):
 # 工具函数
 # ══════════════════════════════════════════════════════════════
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=1800)
 def cached_load_daily(start, end, codes=None):
     from src.storage.cache import load_daily
     return load_daily(start, end, codes=codes)
@@ -1120,12 +1120,27 @@ elif page == "📈 策略交易":
         from datetime import date as _date
         years_to_test = _date.today().year - start_year
         est_time = max(3, years_to_test * 2)  # 粗估每年约2秒
+
+        @st.cache_data(ttl=3600, show_spinner=False)
+        def _cached_backtest(_start_year, _hold_days, _top_n, _stop_loss, _take_profit, _crash, _adaptive):
+            """回测结果缓存：同样的参数1小时内不重复计算"""
+            load_start = f"{_start_year - 1}-01-01"
+            df = cached_load_daily(load_start, None)
+            df_bt = df[df["trade_date"] >= f"{_start_year}-01-01"].copy()
+            _config = SmartStrategyConfig(
+                hold_days=_hold_days, top_n=_top_n,
+                stock_stop_loss=_stop_loss, stock_take_profit=_take_profit,
+                crash_threshold=_crash, adaptive_weights=_adaptive,
+            )
+            return run_smart_backtest_with_validation(df_bt, _config)
+
         try:
             with st.spinner(f"运行智能策略回测（{start_year}年至今，约{years_to_test}年数据，预计{est_time}秒内完成）..."):
-                load_start = f"{start_year - 1}-01-01"
-                df = cached_load_daily(load_start, None)  # None=加载到最新可用数据
-                df_bt = df[df["trade_date"] >= f"{start_year}-01-01"].copy()
-                bt_result, validation = run_smart_backtest_with_validation(df_bt, config)
+                bt_result, validation = _cached_backtest(
+                    start_year, hold_days, top_n,
+                    stock_stop_loss / 100, stock_take_profit / 100,
+                    crash_threshold / 100, adaptive_mode,
+                )
         except FileNotFoundError:
             st.error("⚠️ 数据未准备好，请点击左侧「一键更新数据」按钮")
             st.stop()

@@ -1,5 +1,9 @@
 # Sparrow 量化数据基座 - 依赖
-# Phase 1: 核心依赖
+
+# Web UI
+streamlit==1.58.0
+streamlit-autorefresh==1.0.1
+plotly==6.1.2
 
 # 数据库
 psycopg2-binary==2.9.9
@@ -11,6 +15,8 @@ mootdx==0.11.3
 requests==2.32.3
 httpx==0.28.1
 pandas==2.2.3
+numpy==2.2.6
+pyarrow==20.0.0
 
 # 调度
 apscheduler==3.10.4
@@ -21,5 +27,9 @@ pydantic-settings==2.7.1
 loguru==0.7.3
 python-dotenv==1.0.1
 
-# 缓存 (可选, Phase 2+)
-# redis==5.2.1
+# AI
+openai==1.86.0
+
+# 测试
+hypothesis==6.134.3
+pytest==8.4.1
