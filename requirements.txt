@@ -1,0 +1,25 @@
+# Sparrow 量化数据基座 - 依赖
+# Phase 1: 核心依赖
+
+# 数据库
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.36
+alembic==1.14.1
+
+# 数据源
+mootdx==0.11.3
+requests==2.32.3
+httpx==0.28.1
+pandas==2.2.3
+
+# 调度
+apscheduler==3.10.4
+
+# 配置与工具
+pydantic==2.10.4
+pydantic-settings==2.7.1
+loguru==0.7.3
+python-dotenv==1.0.1
+
+# 缓存 (可选, Phase 2+)
+# redis==5.2.1
