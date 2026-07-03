@@ -65,6 +65,12 @@ def collect_stock_list() -> int:
     a_stocks = [s for s in stocks if _is_stock_code(s["code"])]
     logger.info(f"过滤后 A 股 {len(a_stocks)} 只")
 
+    # 3. 清洗数据（去除 NUL 字符，PG 不允许字符串中包含 \x00）
+    for s in a_stocks:
+        for key in ("name", "market", "code"):
+            if key in s and isinstance(s[key], str):
+                s[key] = s[key].replace("\x00", "").strip()
+
     # 3. 批量写入数据库 (UPSERT)
     db = SessionLocal()
     count = 0
