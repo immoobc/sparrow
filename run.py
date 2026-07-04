@@ -5,10 +5,13 @@ Sparrow 投资助手 - 启动文件
 根据操作系统自动判断环境：
   - Linux（生产环境）：带 baseUrlPath=sparrow，配合 nginx 反向代理
   - macOS/Windows（开发环境）：不带前缀，直接 localhost:5007 访问
+
+生产环境用法：
+  nohup python3 run.py > logs/streamlit.log 2>&1 &
 """
+import os
 import sys
 import platform
-import subprocess
 from pathlib import Path
 
 PROJECT_DIR = Path(__file__).parent
@@ -16,25 +19,25 @@ PROJECT_DIR = Path(__file__).parent
 
 def main():
     system = platform.system().lower()
-    
-    cmd = [
+
+    args = [
         sys.executable, "-m", "streamlit", "run", "app.py",
         "--server.port=5007",
         "--server.address=0.0.0.0",
         "--server.headless=true",
     ]
-    
+
     if system == "linux":
-        # 生产环境：配合 nginx 的 /sparrow/ 代理路径
-        cmd.append("--server.baseUrlPath=sparrow")
+        args.append("--server.baseUrlPath=sparrow")
         print("🐦 Sparrow 投资助手启动（生产模式）")
         print("🌐 通过 nginx 访问: https://moobc.cn/sparrow/")
     else:
-        # 开发环境：直接访问，无前缀
         print("🐦 Sparrow 投资助手启动（开发模式）")
         print("🌐 访问地址: http://localhost:5007")
-    
-    subprocess.run(cmd, cwd=str(PROJECT_DIR))
+
+    # 用 exec 替换当前进程，不再有父子进程链
+    os.chdir(str(PROJECT_DIR))
+    os.execvp(args[0], args)
 
 
 if __name__ == "__main__":
