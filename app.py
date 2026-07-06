@@ -8,6 +8,7 @@ Sparrow 投资助手 — 可视化面板 V2
 import sys
 import json
 import time
+import platform
 from datetime import date, timedelta
 from pathlib import Path
 
