@@ -5,9 +5,15 @@
 2. 增量采集全市场当日K线(如果盘后)
 3. 刷新 Parquet 缓存
 4. 返回更新状态
+
+并发保护:
+- 同一时间只有一个更新任务在执行
+- 其他并发请求等待复用同一次结果（去峰）
+- 60秒内重复请求直接返回上次结果（防抖）
 """
 
 import time
+import threading
 from datetime import date, timedelta
 
 from src.datasource.mootdx_source import get_client, _get_market
@@ -22,6 +28,12 @@ WATCH_LIST = [
     "510500",  # 中证500ETF
     "159915",  # 创业板ETF
 ]
+
+# ── 并发去重机制 ──
+_update_lock = threading.Lock()
+_last_result: dict | None = None
+_last_update_time: float = 0
+_DEBOUNCE_SECONDS = 60  # 60秒内重复请求直接返回缓存结果
 
 
 def update_watchlist() -> dict:
@@ -81,7 +93,12 @@ def update_watchlist() -> dict:
 
 def one_click_update(full_market: bool = False) -> dict:
     """
-    一键更新所有数据。
+    一键更新所有数据（带并发去重）。
+
+    并发保护:
+    - 60秒内的重复请求直接返回上次结果（防抖）
+    - 如果已有更新正在执行，后续请求等待复用结果（去峰）
+    - 同一时刻只有一个实际的采集任务在跑
 
     Args:
         full_market: 是否更新全市场K线(耗时较长~15分钟)
@@ -90,6 +107,35 @@ def one_click_update(full_market: bool = False) -> dict:
     Returns:
         更新结果摘要
     """
+    global _last_result, _last_update_time
+
+    # 防抖: 60秒内重复请求直接返回
+    if _last_result and (time.time() - _last_update_time) < _DEBOUNCE_SECONDS:
+        logger.info("一键更新: 60秒内已更新过，直接返回上次结果")
+        return _last_result
+
+    # 去峰: 拿不到锁说明有人在跑，等它跑完复用结果
+    acquired = _update_lock.acquire(blocking=True, timeout=120)
+    if not acquired:
+        logger.warning("一键更新: 等待超时，放弃")
+        return _last_result or {"error": "更新超时，请稍后重试"}
+
+    try:
+        # 二次检查: 等锁期间可能已经有人完成了
+        if _last_result and (time.time() - _last_update_time) < _DEBOUNCE_SECONDS:
+            logger.info("一键更新: 等锁期间已由其他请求完成")
+            return _last_result
+
+        result = _do_update(full_market)
+        _last_result = result
+        _last_update_time = time.time()
+        return result
+    finally:
+        _update_lock.release()
+
+
+def _do_update(full_market: bool = False) -> dict:
+    """实际执行更新（无锁保护，由 one_click_update 调用）"""
     t0 = time.time()
     results = {}
 

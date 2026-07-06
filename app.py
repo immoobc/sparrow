@@ -137,43 +137,37 @@ if _scheduler and _scheduler.running:
 else:
     st.sidebar.caption("⚠️ 自动更新未运行")
 
-# 一键更新按钮（低配服务器禁用，避免 OOM）
-from src.config import settings as _app_settings
+# 一键更新按钮
+if st.sidebar.button("🔄 一键更新数据", type="primary", key="update_btn"):
+    with st.sidebar:
+        progress = st.progress(0, text="准备更新...")
+        try:
+            progress.progress(5, text="阶段1/4: 连接数据源...")
+            from src.collector.one_click_update import one_click_update, update_watchlist
+            from src.collector.index_collector import collect_index_daily
+            from src.storage.cache import export_to_parquet
 
-if _app_settings.is_low_memory:
-    st.sidebar.button("🔄 一键更新数据", type="primary", disabled=True, help="低配服务器(≤2GB)已禁用手动更新，数据由后台调度器自动采集", key="update_btn")
-    st.sidebar.caption("🚫 内存不足，已由调度器自动更新")
-else:
-    if st.sidebar.button("🔄 一键更新数据", type="primary", key="update_btn"):
-        with st.sidebar:
-            progress = st.progress(0, text="准备更新...")
+            progress.progress(15, text="阶段1/4: 采集关注列表最新K线...")
+            watchlist_result = update_watchlist()
+            progress.progress(35, text=f"阶段2/4: 采集指数K线...")
+
             try:
-                progress.progress(5, text="阶段1/4: 连接数据源...")
-                from src.collector.one_click_update import one_click_update, update_watchlist
-                from src.collector.index_collector import collect_index_daily
-                from src.storage.cache import export_to_parquet
+                collect_index_daily()
+            except Exception:
+                pass  # 指数采集失败不阻塞
+            progress.progress(55, text="阶段3/4: 刷新Parquet缓存...")
 
-                progress.progress(15, text="阶段1/4: 采集关注列表最新K线...")
-                watchlist_result = update_watchlist()
-                progress.progress(35, text=f"阶段2/4: 采集指数K线...")
+            cache_result = export_to_parquet()
+            progress.progress(95, text="阶段4/4: 清理缓存...")
 
-                try:
-                    collect_index_daily()
-                except Exception:
-                    pass  # 指数采集失败不阻塞
-                progress.progress(55, text="阶段3/4: 刷新Parquet缓存...")
-
-                cache_result = export_to_parquet()
-                progress.progress(95, text="阶段4/4: 清理缓存...")
-
-                st.cache_data.clear()
-                progress.progress(100, text="✅ 全部完成!")
-                time.sleep(0.5)
-                progress.empty()
-                st.success(f"✅ 更新完成 (K线{watchlist_result['total_rows']}条, 缓存{cache_result['rows']:,}条)")
-            except Exception as e:
-                progress.empty()
-                st.error(f"更新失败: {e}")
+            st.cache_data.clear()
+            progress.progress(100, text="✅ 全部完成!")
+            time.sleep(0.5)
+            progress.empty()
+            st.success(f"✅ 更新完成 (K线{watchlist_result['total_rows']}条, 缓存{cache_result['rows']:,}条)")
+        except Exception as e:
+            progress.empty()
+            st.error(f"更新失败: {e}")
 
 # 数据状态
 from src.storage.cache import get_cache_info
