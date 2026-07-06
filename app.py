@@ -74,10 +74,13 @@ def _start_background_scheduler():
             except Exception as e:
                 logger.error(f"[调度器] 自动更新异常: {e}")
 
-        # 每30分钟检查一次（如果数据过期则更新）
+        # 调度频率: 低配服务器每2小时检查，高配每30分钟
+        from src.config import settings as _sched_settings
+        check_interval = 120 if _sched_settings.is_low_memory else 30
+
         scheduler.add_job(
             _bg_auto_update,
-            IntervalTrigger(minutes=30),
+            IntervalTrigger(minutes=check_interval),
             id="auto_update_interval",
             name="定时检查更新",
             replace_existing=True,
@@ -209,7 +212,7 @@ with st.sidebar.expander("📖 术语速查"):
 # 工具函数
 # ══════════════════════════════════════════════════════════════
 
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=1800, max_entries=2)
 def cached_load_daily(start, end, codes=None):
     from src.storage.cache import load_daily
     return load_daily(start, end, codes=codes)
@@ -260,8 +263,13 @@ if page == "🌡️ 市场温度":
             calc_momentum_temperature,
             calc_volume_temperature,
         )
+
+        @st.cache_data(ttl=1800, max_entries=1)
+        def _cached_temperature():
+            return get_market_temperature()
+
         with st.spinner("计算中..."):
-            temp = get_market_temperature()
+            temp = _cached_temperature()
     except Exception as e:
         st.error(f"计算失败: {e}。请点击侧边栏「一键更新数据」。")
         st.stop()
@@ -650,7 +658,12 @@ elif page == "💼 我的持仓":
     # 获取市场温度(用于场外基金建议)
     try:
         from src.advisor.market_thermometer import get_market_temperature
-        temp = get_market_temperature()
+
+        @st.cache_data(ttl=1800, max_entries=1)
+        def _cached_temperature_for_portfolio():
+            return get_market_temperature()
+
+        temp = _cached_temperature_for_portfolio()
         market_temp = temp["overall"]
     except Exception:
         market_temp = 50  # 默认中性
@@ -1109,7 +1122,7 @@ elif page == "📈 策略交易":
         years_to_test = _date.today().year - start_year
         est_time = max(3, years_to_test * 2)  # 粗估每年约2秒
 
-        @st.cache_data(ttl=3600, show_spinner=False)
+        @st.cache_data(ttl=3600, max_entries=1, show_spinner=False)
         def _cached_backtest(_start_year, _hold_days, _top_n, _stop_loss, _take_profit, _crash, _adaptive):
             """回测结果缓存：同样的参数1小时内不重复计算"""
             load_start = f"{_start_year - 1}-01-01"

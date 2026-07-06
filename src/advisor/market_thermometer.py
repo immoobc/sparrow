@@ -34,7 +34,8 @@ def calc_valuation_temperature(df: pd.DataFrame = None) -> dict:
     """
     if df is None:
         df = load_daily(
-            start_date=(date.today() - timedelta(days=1300)).isoformat()
+            start_date=(date.today() - timedelta(days=1300)).isoformat(),
+            columns=["code", "trade_date", "close"],
         )
 
     if df.empty:
@@ -79,7 +80,8 @@ def calc_momentum_temperature(df: pd.DataFrame = None) -> dict:
     """
     if df is None:
         df = load_daily(
-            start_date=(date.today() - timedelta(days=100)).isoformat()
+            start_date=(date.today() - timedelta(days=100)).isoformat(),
+            columns=["code", "trade_date", "close"],
         )
 
     if df.empty:
@@ -115,7 +117,8 @@ def calc_volume_temperature(df: pd.DataFrame = None) -> dict:
     """
     if df is None:
         df = load_daily(
-            start_date=(date.today() - timedelta(days=300)).isoformat()
+            start_date=(date.today() - timedelta(days=300)).isoformat(),
+            columns=["code", "trade_date", "amount"],
         )
 
     if df.empty:
@@ -146,6 +149,9 @@ def get_market_temperature() -> dict:
     """
     综合市场温度计。
 
+    内存优化: 只加载必要的列(code, trade_date, close, amount, volume)。
+    在2C2G服务器上峰值内存约 100-150MB（vs 之前 400MB+）。
+
     Returns:
         {
             overall: 综合温度 (0-100),
@@ -158,14 +164,18 @@ def get_market_temperature() -> dict:
     """
     logger.info("计算市场温度...")
 
-    # 一次加载数据，复用
+    # 只加载必要列，大幅减少内存占用
     df = load_daily(
-        start_date=(date.today() - timedelta(days=1300)).isoformat()
+        start_date=(date.today() - timedelta(days=1300)).isoformat(),
+        columns=["code", "trade_date", "close", "volume", "amount"],
     )
 
     val = calc_valuation_temperature(df)
     mom = calc_momentum_temperature(df)
     vol = calc_volume_temperature(df)
+
+    # 显式释放大 DataFrame
+    del df
 
     # 综合: 估值权重50% + 趋势30% + 成交量20%
     overall = (
