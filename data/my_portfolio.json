@@ -1,0 +1,30 @@
+{
+  "positions": [
+    {
+      "code": "513050",
+      "name": "中概互联网ETF",
+      "type": "ETF",
+      "market": "场内",
+      "cost": 5000,
+      "note": "中国科技股(腾讯/阿里/美团)"
+    },
+    {
+      "code": "014642",
+      "name": "摩根新兴动力混合C",
+      "type": "基金",
+      "market": "场外",
+      "cost": 5000,
+      "note": "新兴市场股票"
+    },
+    {
+      "code": "539002",
+      "name": "建信新兴市场优选A",
+      "type": "基金",
+      "market": "场外",
+      "cost": 1000,
+      "note": "海外新兴市场QDII"
+    }
+  ],
+  "total_invested": 11000,
+  "updated": "2026-06-26"
+}

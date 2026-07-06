@@ -1,0 +1,502 @@
+{
+  "initial_capital": 100000,
+  "cash": 20678.0,
+  "start_date": "2026-06-30",
+  "positions": {
+    "301088": {
+      "shares": 200,
+      "avg_cost": 12.0,
+      "current_price": 12.0
+    },
+    "605199": {
+      "shares": 500,
+      "avg_cost": 5.51,
+      "current_price": 5.510000228881836
+    },
+    "002959": {
+      "shares": 100,
+      "avg_cost": 31.63,
+      "current_price": 31.6299991607666
+    },
+    "300915": {
+      "shares": 100,
+      "avg_cost": 20.0,
+      "current_price": 20.0
+    },
+    "688701": {
+      "shares": 400,
+      "avg_cost": 7.77,
+      "current_price": 7.769999980926514
+    },
+    "600831": {
+      "shares": 1000,
+      "avg_cost": 3.07,
+      "current_price": 3.069999933242798
+    },
+    "000906": {
+      "shares": 600,
+      "avg_cost": 5.25,
+      "current_price": 5.25
+    },
+    "603535": {
+      "shares": 500,
+      "avg_cost": 6.27,
+      "current_price": 6.269999980926514
+    },
+    "688389": {
+      "shares": 300,
+      "avg_cost": 9.95,
+      "current_price": 9.949999809265137
+    },
+    "688161": {
+      "shares": 100,
+      "avg_cost": 21.18,
+      "current_price": 21.18000030517578
+    },
+    "001318": {
+      "shares": 300,
+      "avg_cost": 10.21,
+      "current_price": 10.210000038146973
+    },
+    "002543": {
+      "shares": 500,
+      "avg_cost": 6.33,
+      "current_price": 6.329999923706055
+    },
+    "601811": {
+      "shares": 200,
+      "avg_cost": 11.18,
+      "current_price": 11.180000305175781
+    },
+    "002872": {
+      "shares": 600,
+      "avg_cost": 4.64,
+      "current_price": 4.639999866485596
+    },
+    "603828": {
+      "shares": 700,
+      "avg_cost": 4.15,
+      "current_price": 4.150000095367432
+    },
+    "603970": {
+      "shares": 300,
+      "avg_cost": 9.91,
+      "current_price": 9.90999984741211
+    },
+    "001368": {
+      "shares": 100,
+      "avg_cost": 21.4,
+      "current_price": 21.399999618530273
+    },
+    "301429": {
+      "shares": 100,
+      "avg_cost": 15.99,
+      "current_price": 15.989999771118164
+    },
+    "688616": {
+      "shares": 300,
+      "avg_cost": 10.33,
+      "current_price": 10.329999923706055
+    },
+    "600231": {
+      "shares": 1800,
+      "avg_cost": 1.68,
+      "current_price": 1.6799999475479126
+    },
+    "600650": {
+      "shares": 300,
+      "avg_cost": 9.95,
+      "current_price": 9.949999809265137
+    },
+    "600834": {
+      "shares": 400,
+      "avg_cost": 6.77,
+      "current_price": 6.769999980926514
+    },
+    "688067": {
+      "shares": 100,
+      "avg_cost": 20.76,
+      "current_price": 20.760000228881836
+    },
+    "605365": {
+      "shares": 200,
+      "avg_cost": 14.52,
+      "current_price": 14.520000457763672
+    },
+    "300729": {
+      "shares": 300,
+      "avg_cost": 9.8,
+      "current_price": 9.800000190734863
+    },
+    "001336": {
+      "shares": 100,
+      "avg_cost": 22.89,
+      "current_price": 22.889999389648438
+    },
+    "688569": {
+      "shares": 100,
+      "avg_cost": 16.44,
+      "current_price": 16.440000534057617
+    },
+    "001260": {
+      "shares": 100,
+      "avg_cost": 16.42,
+      "current_price": 16.420000076293945
+    },
+    "002880": {
+      "shares": 100,
+      "avg_cost": 20.62,
+      "current_price": 20.6200008392334
+    },
+    "688151": {
+      "shares": 200,
+      "avg_cost": 15.25,
+      "current_price": 15.25
+    }
+  },
+  "trades": [
+    {
+      "trade_date": "2026-06-30",
+      "code": "301088",
+      "direction": "buy",
+      "price": 12.0,
+      "shares": 200,
+      "amount": 2400.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "605199",
+      "direction": "buy",
+      "price": 5.51,
+      "shares": 500,
+      "amount": 2755.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "002959",
+      "direction": "buy",
+      "price": 31.63,
+      "shares": 100,
+      "amount": 3163.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "300915",
+      "direction": "buy",
+      "price": 20.0,
+      "shares": 100,
+      "amount": 2000.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "688701",
+      "direction": "buy",
+      "price": 7.77,
+      "shares": 400,
+      "amount": 3108.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "600831",
+      "direction": "buy",
+      "price": 3.07,
+      "shares": 1000,
+      "amount": 3070.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "000906",
+      "direction": "buy",
+      "price": 5.25,
+      "shares": 600,
+      "amount": 3150.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "603535",
+      "direction": "buy",
+      "price": 6.27,
+      "shares": 500,
+      "amount": 3135.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "688389",
+      "direction": "buy",
+      "price": 9.95,
+      "shares": 300,
+      "amount": 2985.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "688161",
+      "direction": "buy",
+      "price": 21.18,
+      "shares": 100,
+      "amount": 2118.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "001318",
+      "direction": "buy",
+      "price": 10.21,
+      "shares": 300,
+      "amount": 3063.0000000000005,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "002543",
+      "direction": "buy",
+      "price": 6.33,
+      "shares": 500,
+      "amount": 3165.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "601811",
+      "direction": "buy",
+      "price": 11.18,
+      "shares": 200,
+      "amount": 2236.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "002872",
+      "direction": "buy",
+      "price": 4.64,
+      "shares": 600,
+      "amount": 2784.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "603828",
+      "direction": "buy",
+      "price": 4.15,
+      "shares": 700,
+      "amount": 2905.0000000000005,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "603970",
+      "direction": "buy",
+      "price": 9.91,
+      "shares": 300,
+      "amount": 2973.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "001368",
+      "direction": "buy",
+      "price": 21.4,
+      "shares": 100,
+      "amount": 2140.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "301429",
+      "direction": "buy",
+      "price": 15.99,
+      "shares": 100,
+      "amount": 1599.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "688616",
+      "direction": "buy",
+      "price": 10.33,
+      "shares": 300,
+      "amount": 3099.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "600231",
+      "direction": "buy",
+      "price": 1.68,
+      "shares": 1800,
+      "amount": 3024.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "600650",
+      "direction": "buy",
+      "price": 9.95,
+      "shares": 300,
+      "amount": 2985.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "600834",
+      "direction": "buy",
+      "price": 6.77,
+      "shares": 400,
+      "amount": 2708.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "688067",
+      "direction": "buy",
+      "price": 20.76,
+      "shares": 100,
+      "amount": 2076.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "605365",
+      "direction": "buy",
+      "price": 14.52,
+      "shares": 200,
+      "amount": 2904.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "300729",
+      "direction": "buy",
+      "price": 9.8,
+      "shares": 300,
+      "amount": 2940.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "001336",
+      "direction": "buy",
+      "price": 22.89,
+      "shares": 100,
+      "amount": 2289.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "688569",
+      "direction": "buy",
+      "price": 16.44,
+      "shares": 100,
+      "amount": 1644.0000000000002,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "001260",
+      "direction": "buy",
+      "price": 16.42,
+      "shares": 100,
+      "amount": 1642.0000000000002,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "002880",
+      "direction": "buy",
+      "price": 20.62,
+      "shares": 100,
+      "amount": 2062.0,
+      "commission": 5,
+      "reason": "策略买入"
+    },
+    {
+      "trade_date": "2026-06-30",
+      "code": "688151",
+      "direction": "buy",
+      "price": 15.25,
+      "shares": 200,
+      "amount": 3050.0,
+      "commission": 5,
+      "reason": "策略买入"
+    }
+  ],
+  "nav_history": [
+    {
+      "date": "2026-06-30",
+      "nav": 1.0,
+      "total_asset": 100000,
+      "cash": 100000,
+      "market_value": 0,
+      "positions_count": 0
+    },
+    {
+      "date": "2026-06-30",
+      "nav": 1.0,
+      "total_asset": 100000,
+      "cash": 100000,
+      "market_value": 0,
+      "positions_count": 0
+    },
+    {
+      "date": "2026-06-30",
+      "nav": 0.9985,
+      "total_asset": 99850.0,
+      "cash": 20678.0,
+      "market_value": 79172.0,
+      "positions_count": 30
+    },
+    {
+      "date": "2026-06-30",
+      "nav": 0.9985,
+      "total_asset": 99850.0,
+      "cash": 20678.0,
+      "market_value": 79172.0,
+      "positions_count": 30
+    },
+    {
+      "date": "2026-07-01",
+      "nav": 0.9985,
+      "total_asset": 99850.0,
+      "cash": 20678.0,
+      "market_value": 79172.0,
+      "positions_count": 30
+    }
+  ],
+  "updated": "2026-07-01T13:46:11.014472"
+}

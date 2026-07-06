@@ -44,25 +44,25 @@ def _parse_kline_df(code: str, df: pd.DataFrame) -> list[dict]:
 
 
 def _batch_upsert(records: list[dict]) -> int:
-    """批量 UPSERT 日K线数据"""
+    """批量 UPSERT 日K线数据（一次 execute 整批，减少内存碎片）"""
     if not records:
         return 0
 
     db = SessionLocal()
     try:
-        for rec in records:
-            stmt = insert(StockDaily).values(**rec).on_conflict_do_update(
-                index_elements=["code", "trade_date"],
-                set_={
-                    "open": rec["open"],
-                    "high": rec["high"],
-                    "low": rec["low"],
-                    "close": rec["close"],
-                    "volume": rec["volume"],
-                    "amount": rec["amount"],
-                },
-            )
-            db.execute(stmt)
+        # 一次性批量 upsert，比逐条 execute 内存友好
+        stmt = insert(StockDaily).values(records).on_conflict_do_update(
+            index_elements=["code", "trade_date"],
+            set_={
+                "open": insert(StockDaily).excluded.open,
+                "high": insert(StockDaily).excluded.high,
+                "low": insert(StockDaily).excluded.low,
+                "close": insert(StockDaily).excluded.close,
+                "volume": insert(StockDaily).excluded.volume,
+                "amount": insert(StockDaily).excluded.amount,
+            },
+        )
+        db.execute(stmt)
         db.commit()
         return len(records)
     except Exception as e:
@@ -120,17 +120,26 @@ def collect_daily_all(stock_codes: list[str]) -> dict:
     """
     全市场每日增量采集（盘后调用）。
 
+    内存优化: 每批处理后显式释放 session，避免 ORM 对象堆积。
+    批大小由 settings.effective_collect_batch_size 控制（低配=50, 高配=200）。
+
     Args:
         stock_codes: 股票代码列表
 
     Returns:
         {total: 总写入数, success: 成功只数, failed: 失败只数}
     """
+    import gc
+    from src.config import settings
+
     total = 0
     success = 0
     failed = 0
+    batch_size = settings.effective_collect_batch_size
 
-    logger.info(f"开始每日K线采集，共 {len(stock_codes)} 只...")
+    logger.info(
+        f"开始每日K线采集，共 {len(stock_codes)} 只 (批大小={batch_size})"
+    )
 
     for i, code in enumerate(stock_codes):
         try:
@@ -141,8 +150,9 @@ def collect_daily_all(stock_codes: list[str]) -> dict:
             logger.warning(f"[{code}] 采集失败: {e}")
             failed += 1
 
-        # 每100只打印进度
-        if (i + 1) % 100 == 0:
+        # 每批打印进度 + 主动释放内存
+        if (i + 1) % batch_size == 0:
+            gc.collect()
             logger.info(
                 f"进度: {i + 1}/{len(stock_codes)} "
                 f"(成功{success} 失败{failed})"

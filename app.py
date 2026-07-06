@@ -101,17 +101,17 @@ def _start_background_scheduler():
 
 _scheduler = _start_background_scheduler()
 
-# ── 启动时自动检测并更新数据 ──────────────────────────────
-@st.cache_data(ttl=3600)  # 每小时检查一次
-def _auto_update_if_stale():
-    """检测数据是否过期，过期则自动静默更新"""
+# ── 启动时检测数据状态（仅检测，不触发更新） ──────────────────
+@st.cache_data(ttl=3600)
+def _check_data_freshness():
+    """只检测数据是否过期，不执行更新（更新由后台调度器负责）"""
     from src.storage.cache import get_cache_info
-    from datetime import date, timedelta
+    from datetime import date
     import pandas as pd
 
     cache = get_cache_info()
     if not cache.get("exists"):
-        return None  # 缓存不存在，不自动处理
+        return None
 
     latest = cache.get("latest_date")
     if not latest:
@@ -119,25 +119,13 @@ def _auto_update_if_stale():
 
     today = date.today()
     latest_date = pd.Timestamp(latest).date()
-    # 如果是工作日且数据超过1天旧，触发更新
-    is_weekday = today.weekday() < 5
     days_stale = (today - latest_date).days
 
     if days_stale <= 1:
-        return "fresh"  # 数据新鲜
-
-    # 数据过期，尝试更新
-    if is_weekday and days_stale <= 7:
-        try:
-            from src.collector.one_click_update import one_click_update
-            one_click_update(full_market=False)
-            return "updated"
-        except Exception:
-            return "stale"  # 更新失败但不阻塞
+        return "fresh"
     return "stale"
 
-# 执行自动检测（不阻塞页面加载）
-_data_status = _auto_update_if_stale()
+_data_status = _check_data_freshness()
 
 # ── 侧边栏 ──────────────────────────────────────────────
 st.sidebar.title("🐦 Sparrow")
@@ -149,37 +137,43 @@ if _scheduler and _scheduler.running:
 else:
     st.sidebar.caption("⚠️ 自动更新未运行")
 
-# 一键更新按钮
-if st.sidebar.button("🔄 一键更新数据", type="primary", width="stretch"):
-    with st.sidebar:
-        progress = st.progress(0, text="准备更新...")
-        try:
-            progress.progress(5, text="阶段1/4: 连接数据源...")
-            from src.collector.one_click_update import one_click_update, update_watchlist
-            from src.collector.index_collector import collect_index_daily
-            from src.storage.cache import export_to_parquet
+# 一键更新按钮（低配服务器禁用，避免 OOM）
+from src.config import settings as _app_settings
 
-            progress.progress(15, text="阶段1/4: 采集关注列表最新K线...")
-            watchlist_result = update_watchlist()
-            progress.progress(35, text=f"阶段2/4: 采集指数K线...")
-
+if _app_settings.is_low_memory:
+    st.sidebar.button("🔄 一键更新数据", type="primary", disabled=True, help="低配服务器(≤2GB)已禁用手动更新，数据由后台调度器自动采集", key="update_btn")
+    st.sidebar.caption("🚫 内存不足，已由调度器自动更新")
+else:
+    if st.sidebar.button("🔄 一键更新数据", type="primary", key="update_btn"):
+        with st.sidebar:
+            progress = st.progress(0, text="准备更新...")
             try:
-                collect_index_daily()
-            except Exception:
-                pass  # 指数采集失败不阻塞
-            progress.progress(55, text="阶段3/4: 刷新Parquet缓存...")
+                progress.progress(5, text="阶段1/4: 连接数据源...")
+                from src.collector.one_click_update import one_click_update, update_watchlist
+                from src.collector.index_collector import collect_index_daily
+                from src.storage.cache import export_to_parquet
 
-            cache_result = export_to_parquet()
-            progress.progress(95, text="阶段4/4: 清理缓存...")
+                progress.progress(15, text="阶段1/4: 采集关注列表最新K线...")
+                watchlist_result = update_watchlist()
+                progress.progress(35, text=f"阶段2/4: 采集指数K线...")
 
-            st.cache_data.clear()
-            progress.progress(100, text="✅ 全部完成!")
-            time.sleep(0.5)
-            progress.empty()
-            st.success(f"✅ 更新完成 (K线{watchlist_result['total_rows']}条, 缓存{cache_result['rows']:,}条)")
-        except Exception as e:
-            progress.empty()
-            st.error(f"更新失败: {e}")
+                try:
+                    collect_index_daily()
+                except Exception:
+                    pass  # 指数采集失败不阻塞
+                progress.progress(55, text="阶段3/4: 刷新Parquet缓存...")
+
+                cache_result = export_to_parquet()
+                progress.progress(95, text="阶段4/4: 清理缓存...")
+
+                st.cache_data.clear()
+                progress.progress(100, text="✅ 全部完成!")
+                time.sleep(0.5)
+                progress.empty()
+                st.success(f"✅ 更新完成 (K线{watchlist_result['total_rows']}条, 缓存{cache_result['rows']:,}条)")
+            except Exception as e:
+                progress.empty()
+                st.error(f"更新失败: {e}")
 
 # 数据状态
 from src.storage.cache import get_cache_info

@@ -5,11 +5,15 @@ from sqlalchemy.orm import sessionmaker
 
 from src.config import settings
 
+_pool_size = settings.effective_db_pool_size
+_max_overflow = _pool_size * 2  # 低配: 2+4=6连接, 高配: 5+10=15连接
+
 engine = create_engine(
     settings.database_url,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=_pool_size,
+    max_overflow=_max_overflow,
     pool_pre_ping=True,
+    pool_recycle=1800,  # 30分钟回收空闲连接，减少内存驻留
     echo=False,
 )
 
