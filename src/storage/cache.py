@@ -417,8 +417,17 @@ def load_daily(
         needed_files = parquet_files  # fallback: 全读
 
     # 读取并合并
-    frames = []
+    # 确保 trade_date 和 code 始终被读取(过滤需要)
     read_cols = columns if columns else None
+    if read_cols is not None:
+        required = set()
+        if start_date or end_date:
+            required.add("trade_date")
+        if codes:
+            required.add("code")
+        read_cols = list(set(read_cols) | required)
+
+    frames = []
     for f in needed_files:
         try:
             df = pd.read_parquet(f, columns=read_cols, engine="pyarrow")
@@ -454,35 +463,44 @@ def _file_might_contain(f: Path, start_date: str = None, end_date: str = None) -
     if len(parts) == 2:
         # daily_2020 → 整年
         try:
-            year = int(parts[1])
-            file_start = year
-            file_end = year
+            file_year = int(parts[1])
         except ValueError:
             return True
+        if start_date and file_year < int(start_date[:4]) - 1:
+            return False
+        if end_date and file_year > int(end_date[:4]):
+            return False
+        return True
+
     elif len(parts) == 3:
         try:
             a, b = int(parts[1]), int(parts[2])
         except ValueError:
             return True
+
         if b > 12:
             # daily_2020_2024 → 旧格式5年段
-            file_start = a
-            file_end = b
+            file_start_year, file_end_year = a, b
+            if start_date and file_end_year < int(start_date[:4]):
+                return False
+            if end_date and file_start_year > int(end_date[:4]):
+                return False
+            return True
         else:
-            # daily_2026_07 → 按月
-            file_start = a
-            file_end = a
-    else:
-        return True
-
-    if start_date:
-        need_end_year = int(start_date[:4])
-        # 文件结束年份 < 需要的起始年份 → 不需要 (宽松判断)
-        # 不做过于严格的过滤，避免漏掉边界数据
-    if end_date:
-        need_start_year = int(end_date[:4])
-        if file_start > need_start_year + 1:
-            return False
+            # daily_2026_07 → 按月 (year=a, month=b)
+            file_year, file_month = a, b
+            if start_date:
+                start_year = int(start_date[:4])
+                start_month = int(start_date[5:7])
+                # 文件月份 < 起始月份 → 不需要
+                if file_year < start_year or (file_year == start_year and file_month < start_month):
+                    return False
+            if end_date:
+                end_year = int(end_date[:4])
+                end_month = int(end_date[5:7])
+                if file_year > end_year or (file_year == end_year and file_month > end_month):
+                    return False
+            return True
 
     return True
 

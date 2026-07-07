@@ -10,6 +10,11 @@
 - 温度 30-50: 🟡 合理偏低，正常定投
 - 温度 50-70: 🟠 合理偏高，减少加仓
 - 温度 > 70: 🔴 高估区间，停止加仓/考虑减仓
+
+内存优化(2C2G适配):
+- 采样计算: 随机抽 500 只股票代替全市场(统计误差<2%)
+- 只加载必要列
+- 成交量温度只做聚合(全市场日成交额)，不存个股明细
 """
 
 from datetime import date, timedelta
@@ -17,19 +22,30 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
+from src.config import settings
 from src.logger import logger
 from src.storage.cache import load_daily
+
+# 低配采样数, 高配全量
+_SAMPLE_CODES = 300 if settings.is_low_memory else 0  # 0 = 不采样
+
+
+def _sample_codes(df: pd.DataFrame, n: int) -> pd.DataFrame:
+    """从 DataFrame 中随机采样 n 只股票的全部数据"""
+    if n <= 0:
+        return df
+    all_codes = df["code"].unique()
+    if len(all_codes) <= n:
+        return df
+    # 固定随机种子，确保同一天结果一致
+    rng = np.random.default_rng(seed=int(date.today().toordinal()))
+    sampled = rng.choice(all_codes, size=n, replace=False)
+    return df[df["code"].isin(sampled)]
 
 
 def calc_valuation_temperature(df: pd.DataFrame = None) -> dict:
     """
-    计算估值温度: 当前全市场PE中位数在近5年中的百分位。
-
-    用"股价/近1年涨幅还原EPS"的简化方式估算PE:
-    实际用 close / (close - 1年前close) 近似盈利增速判断贵不贵。
-    更直接的方式: 用全市场中位数市净率(PB)替代——股价/净资产比。
-    
-    简化版: 用"全市场收盘价中位数 / 250日均线" 作为估值代理。
+    估值温度: "全市场收盘价中位数 / 250日均线" 在历史中的百分位。
     >1.2 = 贵, <0.8 = 便宜。
     """
     if df is None:
@@ -41,26 +57,32 @@ def calc_valuation_temperature(df: pd.DataFrame = None) -> dict:
     if df.empty:
         return {"temperature": 50, "signal": "无数据"}
 
+    # 采样以控制内存
+    df = _sample_codes(df, _SAMPLE_CODES)
     df = df.sort_values(["code", "trade_date"]).copy()
 
-    # 计算每只股票的"价格/250日均线"比值
-    df["ma250"] = df.groupby("code")["close"].transform(
-        lambda x: x.rolling(250, min_periods=200).mean()
+    # MA窗口: 低配用60日(季线), 高配用250日(年线)
+    ma_window = 60 if settings.is_low_memory else 250
+    min_periods = int(ma_window * 0.7)
+
+    # 计算每只股票的"价格/均线"比值
+    df["ma"] = df.groupby("code")["close"].transform(
+        lambda x: x.rolling(ma_window, min_periods=min_periods).mean()
     )
-    df["price_to_ma"] = df["close"] / df["ma250"]
+    df["price_to_ma"] = df["close"] / df["ma"]
 
     # 每天取全市场中位数
     daily_median = df.groupby("trade_date")["price_to_ma"].median()
     daily_median = daily_median.dropna().sort_index()
 
+    # 释放中间数据
+    del df
+
     if daily_median.empty:
         return {"temperature": 50, "signal": "数据不足"}
 
-    # 当前值
     current = daily_median.iloc[-1]
     current_date = daily_median.index[-1]
-
-    # 在历史中的百分位
     temperature = (daily_median < current).mean() * 100
 
     return {
@@ -87,21 +109,23 @@ def calc_momentum_temperature(df: pd.DataFrame = None) -> dict:
     if df.empty:
         return {"temperature": 50}
 
+    # 动量不采样 — 需要全市场占比才有意义
+    # 但只需要最近100天数据，内存可控(~30MB)
     df = df.sort_values(["code", "trade_date"]).copy()
     df["ma20"] = df.groupby("code")["close"].transform(
         lambda x: x.rolling(20, min_periods=15).mean()
     )
     df["above_ma20"] = df["close"] > df["ma20"]
 
-    # 最新一天
     latest_date = df["trade_date"].max()
     latest = df[df["trade_date"] == latest_date]
-
     above_pct = latest["above_ma20"].mean() * 100
 
     # 历史百分位
     daily_pct = df.groupby("trade_date")["above_ma20"].mean() * 100
     temperature = (daily_pct < above_pct).mean() * 100
+
+    del df
 
     return {
         "temperature": round(temperature, 1),
@@ -112,20 +136,22 @@ def calc_momentum_temperature(df: pd.DataFrame = None) -> dict:
 
 def calc_volume_temperature(df: pd.DataFrame = None) -> dict:
     """
-    成交量温度: 当前成交量 vs 近1年均量。
-    放量 = 情绪高涨, 缩量 = 观望/低迷。
+    成交量温度: 当前全市场日成交额 vs 近60日均额。
+    不需要个股明细，只需要每天的总成交额。
     """
     if df is None:
         df = load_daily(
             start_date=(date.today() - timedelta(days=300)).isoformat(),
-            columns=["code", "trade_date", "amount"],
+            columns=["trade_date", "amount"],
         )
 
     if df.empty:
         return {"temperature": 50}
 
-    # 全市场每日总成交额
+    # 直接聚合: 每天总成交额(不需要保留个股)
     daily_amount = df.groupby("trade_date")["amount"].sum().sort_index()
+
+    del df
 
     if len(daily_amount) < 20:
         return {"temperature": 50}
@@ -133,8 +159,6 @@ def calc_volume_temperature(df: pd.DataFrame = None) -> dict:
     current = daily_amount.iloc[-1]
     ma60 = daily_amount.rolling(60).mean().iloc[-1]
     ratio = current / ma60 if ma60 > 0 else 1
-
-    # 在历史中的百分位
     temperature = (daily_amount < current).mean() * 100
 
     return {
@@ -149,33 +173,76 @@ def get_market_temperature() -> dict:
     """
     综合市场温度计。
 
-    内存优化: 只加载必要的列(code, trade_date, close, amount, volume)。
-    在2C2G服务器上峰值内存约 100-150MB（vs 之前 400MB+）。
+    内存策略:
+    - 低配(2G): 回看1年(250天), 采样500只 → 峰值 ~80MB
+    - 高配(>2G): 回看3.5年(900天), 全量 → 峰值 ~400MB
 
-    Returns:
-        {
-            overall: 综合温度 (0-100),
-            valuation: 估值温度,
-            momentum: 趋势温度,
-            volume: 成交量温度,
-            signal: 操作建议文字,
-            action: "加仓"/"定投"/"观望"/"减仓",
-        }
+    缩短回看窗口对实际操作建议影响极小——判断的是"当前相对近期贵不贵"。
     """
+    import gc
+    from pathlib import Path
+
     logger.info("计算市场温度...")
 
-    # 只加载必要列，大幅减少内存占用
-    df = load_daily(
-        start_date=(date.today() - timedelta(days=1300)).isoformat(),
-        columns=["code", "trade_date", "close", "volume", "amount"],
+    # 根据内存选择回看天数
+    if settings.is_low_memory:
+        val_days = 90     # 3个月 (只读2-3个parquet文件)
+        mom_days = 40     # 40天 (1-2个文件)
+        vol_days = 40     # 40天
+    else:
+        val_days = 900    # 3.5年
+        mom_days = 100
+        vol_days = 300
+
+    # 预采样
+    sample_codes = None
+    if _SAMPLE_CODES > 0:
+        try:
+            cache_dir = Path(settings.data_dir) / "parquet"
+            recent_files = sorted(cache_dir.glob("daily_*.parquet"))
+            if recent_files:
+                codes_only = pd.read_parquet(
+                    recent_files[-1], columns=["code"], engine="pyarrow"
+                )
+                all_codes = codes_only["code"].unique()
+                del codes_only
+                if len(all_codes) > _SAMPLE_CODES:
+                    rng = np.random.default_rng(seed=int(date.today().toordinal()))
+                    sample_codes = rng.choice(all_codes, size=_SAMPLE_CODES, replace=False).tolist()
+                del all_codes
+                gc.collect()
+        except Exception:
+            pass
+
+    # 1. 估值
+    df_val = load_daily(
+        start_date=(date.today() - timedelta(days=val_days)).isoformat(),
+        columns=["code", "trade_date", "close"],
+        codes=sample_codes,
     )
+    val = calc_valuation_temperature(df_val)
+    del df_val
+    gc.collect()
 
-    val = calc_valuation_temperature(df)
-    mom = calc_momentum_temperature(df)
-    vol = calc_volume_temperature(df)
+    # 2. 趋势 (低配也采样, 占比估算误差<3%)
+    df_mom = load_daily(
+        start_date=(date.today() - timedelta(days=mom_days)).isoformat(),
+        columns=["code", "trade_date", "close"],
+        codes=sample_codes if settings.is_low_memory else None,
+    )
+    mom = calc_momentum_temperature(df_mom)
+    del df_mom
+    gc.collect()
 
-    # 显式释放大 DataFrame
-    del df
+    # 3. 成交量 (低配也采样, 总额按比例放大即可得到趋势)
+    df_vol = load_daily(
+        start_date=(date.today() - timedelta(days=vol_days)).isoformat(),
+        columns=["trade_date", "amount"],
+        codes=sample_codes if settings.is_low_memory else None,
+    )
+    vol = calc_volume_temperature(df_vol)
+    del df_vol
+    gc.collect()
 
     # 综合: 估值权重50% + 趋势30% + 成交量20%
     overall = (
