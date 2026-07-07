@@ -19,6 +19,17 @@ _em_daily_count: int = 0
 _em_daily_reset: float = 0.0
 
 
+def _reset_em_session():
+    """重建 HTTP session（解决服务端主动断开连接的问题）"""
+    global _em_session
+    try:
+        _em_session.close()
+    except Exception:
+        pass
+    _em_session = requests.Session()
+    _em_session.headers.update({"User-Agent": UA})
+
+
 def em_get(
     url: str,
     params: dict | None = None,

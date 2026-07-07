@@ -151,23 +151,36 @@ if st.sidebar.button("🔄 一键更新数据", type="primary", key="update_btn"
             # 开发环境(macOS/Windows): 真实拉取数据
             progress = st.progress(0, text="准备更新...")
             try:
-                progress.progress(5, text="阶段1/4: 连接数据源...")
+                progress.progress(5, text="阶段1/5: 连接数据源...")
                 from src.collector.one_click_update import one_click_update, update_watchlist
                 from src.collector.index_collector import collect_index_daily
+                from src.collector.sector_collector import collect_sector_daily, backfill_sector_history
                 from src.storage.cache import export_to_parquet
 
-                progress.progress(15, text="阶段1/4: 采集关注列表最新K线...")
+                progress.progress(10, text="阶段1/5: 采集关注列表最新K线...")
                 watchlist_result = update_watchlist()
-                progress.progress(35, text=f"阶段2/4: 采集指数K线...")
+                progress.progress(25, text="阶段2/5: 采集指数K线...")
 
                 try:
                     collect_index_daily()
                 except Exception:
-                    pass  # 指数采集失败不阻塞
-                progress.progress(55, text="阶段3/4: 刷新Parquet缓存...")
+                    pass
 
+                progress.progress(35, text="阶段3/5: 采集行业板块...")
+                try:
+                    collect_sector_daily()
+                    # 检测行业数据是否不足，自动回填历史
+                    from src.advisor.sector_analyzer import load_sector_data_from_db
+                    sector_df = load_sector_data_from_db()
+                    if sector_df.empty or sector_df["trade_date"].nunique() < 20:
+                        progress.progress(45, text="阶段3/5: 行业数据不足，回填历史(约2分钟)...")
+                        backfill_sector_history(days=90)
+                except Exception:
+                    pass
+
+                progress.progress(65, text="阶段4/5: 刷新Parquet缓存...")
                 cache_result = export_to_parquet()
-                progress.progress(95, text="阶段4/4: 清理缓存...")
+                progress.progress(95, text="阶段5/5: 清理缓存...")
 
                 st.cache_data.clear()
                 progress.progress(100, text="✅ 全部完成!")
