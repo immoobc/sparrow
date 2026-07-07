@@ -288,19 +288,27 @@ def get_sector_rotation_signals(sector_daily_df: pd.DataFrame) -> dict:
 
 
 def load_sector_data_from_db() -> pd.DataFrame:
-    """从数据库加载行业日行情数据"""
+    """从数据库加载行业日行情数据（低配限制90天）"""
     from src.storage.database import SessionLocal
+    from src.config import settings as _sec_settings
     from sqlalchemy import text
+
+    # 低配: 只加载最近90天, 高配: 全量
+    if _sec_settings.is_low_memory:
+        date_filter = "AND sd.trade_date >= CURRENT_DATE - INTERVAL '90 days'"
+    else:
+        date_filter = ""
 
     db = SessionLocal()
     try:
-        result = db.execute(text("""
+        result = db.execute(text(f"""
             SELECT sd.sector_code, sd.trade_date, sd.change_pct,
                    sd.up_count, sd.down_count,
                    sd.leader_code, sd.leader_name, sd.leader_pct,
                    si.sector_name
             FROM sector_daily sd
             JOIN sector_info si ON sd.sector_code = si.sector_code
+            WHERE 1=1 {date_filter}
             ORDER BY sd.trade_date DESC, sd.change_pct DESC
         """))
         rows = result.fetchall()

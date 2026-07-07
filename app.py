@@ -233,7 +233,39 @@ with st.sidebar.expander("📖 术语速查"):
 
 @st.cache_data(ttl=1800, max_entries=2)
 def cached_load_daily(start, end, codes=None):
+    """
+    统一的数据加载入口（带低配内存保护）。
+    低配: 自动采样500只 + 限制最多1年数据。
+    """
     from src.storage.cache import load_daily
+    from src.config import settings as _ld_settings
+
+    if _ld_settings.is_low_memory and codes is None:
+        import numpy as np
+        from pathlib import Path
+
+        # 限制时间窗口: 最多1年
+        if start:
+            from datetime import date as _d, timedelta as _td
+            min_start = (_d.today() - _td(days=365)).isoformat()
+            if start < min_start:
+                start = min_start
+
+        # 预采样500只
+        cache_dir = Path(_ld_settings.data_dir) / "parquet"
+        recent_files = sorted(cache_dir.glob("daily_*.parquet"))
+        if recent_files:
+            try:
+                import pandas as _pd
+                codes_only = _pd.read_parquet(recent_files[-1], columns=["code"], engine="pyarrow")
+                all_codes = codes_only["code"].unique()
+                del codes_only
+                if len(all_codes) > 500:
+                    rng = np.random.default_rng(seed=42)
+                    codes = rng.choice(all_codes, size=500, replace=False).tolist()
+            except Exception:
+                pass
+
     return load_daily(start, end, codes=codes)
 
 
@@ -1114,8 +1146,18 @@ elif page == "📈 策略交易":
                                          help="每隔多少天换一次股票。20天≈1个月。")
                 top_n = st.selectbox("持仓股数", [20, 30, 50], index=1, key="smart_topn",
                                      help="同时持有多少只股票。")
-                start_year = st.selectbox("回测起始年", list(range(1995, 2025)), index=20, key="smart_sy",
-                                          help="越早=验证越充分但耗时越长。数据从1990年就有，但1995年前股票太少(<100只)建议从1995开始。")
+                # 低配服务器限制回测年限(内存不足以加载多年全市场数据)
+                from src.config import settings as _bt_settings
+                if _bt_settings.is_low_memory:
+                    _year_options = list(range(2024, 2027))
+                    _year_default = 0  # 2024
+                    _year_help = "低配服务器限制最多回测2年，避免内存溢出。"
+                else:
+                    _year_options = list(range(1995, 2025))
+                    _year_default = 20  # 2015
+                    _year_help = "越早=验证越充分但耗时越长。"
+                start_year = st.selectbox("回测起始年", _year_options, index=_year_default, key="smart_sy",
+                                          help=_year_help)
             with col2:
                 stock_stop_loss = st.selectbox("个股止损线", [-10, -15, -20, -25, -30], index=2, key="smart_sl",
                                                help="单只股票跌多少就卖掉", format_func=lambda x: f"{x}%")
@@ -1144,8 +1186,20 @@ elif page == "📈 策略交易":
         @st.cache_data(ttl=3600, max_entries=1, show_spinner=False)
         def _cached_backtest(_start_year, _hold_days, _top_n, _stop_loss, _take_profit, _crash, _adaptive):
             """回测结果缓存：同样的参数1小时内不重复计算"""
+            import numpy as np
+            from src.config import settings as _cfg
+
             load_start = f"{_start_year - 1}-01-01"
             df = cached_load_daily(load_start, None)
+
+            # 低配: 采样500只股票做回测(内存从~500MB降到~50MB)
+            if _cfg.is_low_memory:
+                all_codes = df["code"].unique()
+                if len(all_codes) > 500:
+                    rng = np.random.default_rng(seed=42)
+                    sampled = rng.choice(all_codes, size=500, replace=False)
+                    df = df[df["code"].isin(sampled)]
+
             df_bt = df[df["trade_date"] >= f"{_start_year}-01-01"].copy()
             _config = SmartStrategyConfig(
                 hold_days=_hold_days, top_n=_top_n,

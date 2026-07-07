@@ -59,7 +59,12 @@ def generate_live_signal(
 
     today = date.today()
     # 加载足够的历史数据用于计算因子
-    start = (today - timedelta(days=200)).isoformat()
+    # 低配: 缩短到90天 + 采样1000只(信号生成需要更大池子)
+    from src.config import settings as _sig_settings
+    if _sig_settings.is_low_memory:
+        start = (today - timedelta(days=90)).isoformat()
+    else:
+        start = (today - timedelta(days=200)).isoformat()
 
     logger.info(f"生成实盘信号 [{today}]")
 
@@ -68,6 +73,14 @@ def generate_live_signal(
     if df.empty:
         logger.error("无数据")
         return {"error": "数据为空，请先点击「一键更新数据」"}
+
+    # 低配: 采样以控制内存
+    if _sig_settings.is_low_memory:
+        all_codes = df["code"].unique()
+        if len(all_codes) > 1000:
+            rng = np.random.default_rng(seed=int(today.toordinal()))
+            sampled = rng.choice(all_codes, size=1000, replace=False)
+            df = df[df["code"].isin(sampled)]
 
     df = df.sort_values(["code", "trade_date"]).copy()
 

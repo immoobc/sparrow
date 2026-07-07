@@ -61,6 +61,16 @@ def generate_daily_signal(
         logger.error("无数据")
         return {}
 
+    # 低配: 采样控制内存
+    from src.config import settings as _sg_settings
+    if _sg_settings.is_low_memory:
+        import numpy as _np
+        all_codes = df["code"].unique()
+        if len(all_codes) > 1000:
+            rng = _np.random.default_rng(seed=int(today.toordinal()))
+            sampled = rng.choice(all_codes, size=1000, replace=False)
+            df = df[df["code"].isin(sampled)]
+
     df = df.sort_values(["code", "trade_date"]).copy()
     df["daily_ret"] = df.groupby("code")["close"].pct_change()
     df["factor"] = df.groupby("code")["close"].pct_change(lookback)

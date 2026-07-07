@@ -80,8 +80,11 @@ def get_etf_analysis(code: str = "513050") -> dict:
     Returns:
         技术分析结果 + 操作建议
     """
+    from src.config import settings as _pt_settings
+    _lookback = 120 if _pt_settings.is_low_memory else 300
+
     df = load_daily(
-        start_date=(date.today() - timedelta(days=300)).isoformat(),
+        start_date=(date.today() - timedelta(days=_lookback)).isoformat(),
         codes=[code],
     )
 
